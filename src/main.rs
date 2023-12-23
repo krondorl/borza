@@ -1,5 +1,6 @@
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::{event, terminal};
+use std::io;
 use std::time::Duration;
 
 struct CleanUp;
@@ -10,32 +11,54 @@ impl Drop for CleanUp {
     }
 }
 
-// Part 2 Completed
-// https://medium.com/@otukof/build-your-text-editor-with-rust-part-2-74e03daef237
-//
-// Todo: continue development with Part 3
-fn main() -> std::result::Result<(), std::io::Error> {
-    let _clean_up = CleanUp;
-    terminal::enable_raw_mode()?;
-    loop {
-        if event::poll(Duration::from_millis(500))? {
-            if let Event::Key(event) = event::read()? {
-                match event {
-                    KeyEvent {
-                        code: KeyCode::Char('q'),
-                        modifiers: event::KeyModifiers::NONE,
-                        kind: _,
-                        state: _,
-                    } => break,
-                    _ => {
-                        //todo
-                    }
+struct Reader;
+
+impl Reader {
+    fn read_key(&self) -> std::io::Result<KeyEvent> {
+        loop {
+            if event::poll(Duration::from_millis(500))? {
+                if let Event::Key(event) = event::read()? {
+                    return Ok(event);
                 }
-                println!("{:?}\r", event);
             }
-        } else {
-            println!("No input yet\r");
         }
     }
+}
+
+struct Editor {
+    reader: Reader,
+}
+
+impl Editor {
+    fn new() -> Self {
+        Self { reader: Reader }
+    }
+
+    fn process_keypress(&self) -> std::io::Result<bool> {
+        match self.reader.read_key()? {
+            KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: event::KeyModifiers::CONTROL,
+                kind,
+                state,
+            } => return Ok(false),
+            _ => {}
+        }
+        Ok(true)
+    }
+
+    fn run(&self) -> std::io::Result<bool> {
+        self.process_keypress()
+    }
+}
+
+// Continue development with Part 3
+// https://medium.com/@otukof/b030670fa815
+// "Now we have a simple main() function and we would like to keep it as such."
+fn main() -> std::io::Result<()> {
+    let _clean_up = CleanUp;
+    terminal::enable_raw_mode()?;
+    let editor = Editor::new();
+    while editor.run()? {}
     Ok(())
 }
